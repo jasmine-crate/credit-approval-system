@@ -6,3 +6,8 @@ backend/app/frontend/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# local env & scanner artifacts & host lockfile
+.env
+.mimosa/
+package-lock.json

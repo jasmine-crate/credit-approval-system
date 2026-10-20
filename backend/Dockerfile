@@ -32,6 +32,11 @@ ENV UV_COMPILE_BYTECODE=1
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
 ENV UV_LINK_MODE=copy
 
+# China network adaptation: slower links need longer HTTP timeouts, and the
+# official PyPI is unreliable here; versions still come from uv.lock (--frozen)
+ENV UV_HTTP_TIMEOUT=300
+ENV UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+
 WORKDIR /app/
 
 # Place executables in the environment at the front of the path
