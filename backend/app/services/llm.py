@@ -5,6 +5,8 @@
 - temperature=0.3，输出模板化，便于审批人快速扫读
 """
 
+from typing import Any
+
 import httpx
 
 from app.core.config import settings
@@ -21,7 +23,7 @@ _SYSTEM_PROMPT = (
 
 
 def generate_summary(
-    application: LoanApplication, customer: Customer, outcome_reasons: dict
+    application: LoanApplication, customer: Customer, outcome_reasons: dict[str, Any]
 ) -> str | None:
     if not settings.DEEPSEEK_API_KEY:
         return None
@@ -54,7 +56,8 @@ def generate_summary(
             timeout=_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"].strip()
+        content = response.json()["choices"][0]["message"]["content"]
+        return str(content).strip()
     except Exception:
         # 降级：LLM 不可用不影响审批主流程
         return None

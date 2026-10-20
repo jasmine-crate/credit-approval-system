@@ -2,7 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from sqlmodel import col, func, select
+from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, ManagerOrAdmin, SessionDep
 from app.models import (
@@ -66,9 +66,7 @@ def read_customers(
 
 
 @router.get("/{id}", response_model=CustomerPublic)
-def read_customer(
-    session: SessionDep, current_user: CurrentUser, id: uuid.UUID
-) -> Any:
+def read_customer(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) -> Any:
     """
     客户详情：建档人、审批人（复核场景）或管理员可见。
     """

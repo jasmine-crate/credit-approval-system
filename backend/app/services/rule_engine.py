@@ -10,6 +10,7 @@
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 
 from sqlmodel import Session, func, select
 
@@ -25,7 +26,7 @@ class RuleOutcome:
     action: str  # pass / reject / escalate
     score: int  # 风险分 0-100，越高越危险
     level: str  # low / medium / high
-    reasons: dict = field(default_factory=dict)
+    reasons: dict[str, Any] = field(default_factory=dict)
 
 
 def monthly_payment(principal: float, months: int, annual_rate: float) -> Decimal:
@@ -71,6 +72,9 @@ def evaluate(session: Session, application: LoanApplication) -> RuleOutcome:
     评分与硬规则独立计算：即便硬规则触发，评分明细仍然完整输出（可解释性）。
     """
     customer = session.get(Customer, application.customer_id)
+    if customer is None:
+        # 申请创建时已校验客户存在，此处仅为类型完备性兜底
+        raise ValueError(f"customer {application.customer_id} not found")
     payment = monthly_payment(
         float(application.amount),
         application.term_months,
@@ -80,14 +84,12 @@ def evaluate(session: Session, application: LoanApplication) -> RuleOutcome:
         float(customer.monthly_income) if customer.monthly_income is not None else None
     )
     ratio = round(payment / Decimal(str(income)), 2) if income else None
-    prior = (
-        session.exec(
-            select(func.count())
-            .select_from(LoanApplication)
-            .where(LoanApplication.customer_id == application.customer_id)
-            .where(LoanApplication.id != application.id)
-        ).one()
-    )
+    prior = session.exec(
+        select(func.count())
+        .select_from(LoanApplication)
+        .where(LoanApplication.customer_id == application.customer_id)
+        .where(LoanApplication.id != application.id)
+    ).one()
 
     hard_rules = []
 
@@ -142,7 +144,9 @@ def evaluate(session: Session, application: LoanApplication) -> RuleOutcome:
         level = "low"
 
     # 动作合成：reject > escalate > pass
-    if any(r["rule"] == "payment_ratio_exceeded" and r["triggered"] for r in hard_rules):
+    if any(
+        r["rule"] == "payment_ratio_exceeded" and r["triggered"] for r in hard_rules
+    ):
         action = "reject"
     elif income is None or any(
         r["rule"] == "large_amount" and r["triggered"] for r in hard_rules

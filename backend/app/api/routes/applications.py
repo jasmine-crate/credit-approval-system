@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -9,9 +9,9 @@ from sqlmodel import Session, col, func, select
 
 from app.api.deps import ApproverOrAdmin, CurrentUser, ManagerOrAdmin, SessionDep
 from app.core.config import settings
-from app.services import llm, rule_engine
 from app.models import (
     ApprovalRecord,
+    ApprovalRecordPublic,
     ApprovalRecordsPublic,
     Customer,
     LoanApplication,
@@ -22,9 +22,11 @@ from app.models import (
     RepaymentPlanPublic,
     RepaymentPlansPublic,
     RiskAssessment,
+    RiskAssessmentPublic,
     RiskAssessmentsPublic,
     User,
 )
+from app.services import llm, rule_engine
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -43,8 +45,8 @@ def transition(
     """
     result = session.exec(
         sa_update(LoanApplication)
-        .where(LoanApplication.id == application_id)
-        .where(LoanApplication.status == from_status)
+        .where(col(LoanApplication.id) == application_id)
+        .where(col(LoanApplication.status) == from_status)
         .values(status=to_status)
     )
     session.commit()
@@ -76,9 +78,7 @@ def _get_application_or_404(session: Session, id: uuid.UUID) -> LoanApplication:
     return application
 
 
-def _check_view_permission(
-    current_user: User, application: LoanApplication
-) -> None:
+def _check_view_permission(current_user: User, application: LoanApplication) -> None:
     if current_user.is_superuser or current_user.role in ("approver", "admin"):
         return
     if application.submitted_by != current_user.id:
@@ -213,6 +213,8 @@ def submit_application(
     outcome = rule_engine.evaluate(session, application)
 
     customer = session.get(Customer, application.customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
     llm_advice = llm.generate_summary(application, customer, outcome.reasons)
     if llm_advice:
         outcome.reasons["llm_advice"] = llm_advice
@@ -247,7 +249,9 @@ def submit_application(
             action="auto_reject",
             operator_id=None,
             comment=(
-                f"规则引擎v1: {triggered_detail}" if triggered_detail else "规则引擎v1: 自动拒绝"
+                f"规则引擎v1: {triggered_detail}"
+                if triggered_detail
+                else "规则引擎v1: 自动拒绝"
             ),
         )
     else:
@@ -304,11 +308,13 @@ def decide_application(
         )
     session.exec(
         sa_update(LoanApplication)
-        .where(LoanApplication.id == id)
+        .where(col(LoanApplication.id) == id)
         .values(decided_by=current_user.id, decided_at=datetime.now(UTC))
     )
     session.commit()
-    _add_record(session, id, action=action, operator_id=current_user.id, comment=comment)
+    _add_record(
+        session, id, action=action, operator_id=current_user.id, comment=comment
+    )
     return _get_application_or_404(session, id)
 
 
@@ -326,7 +332,10 @@ def read_application_records(
         .where(ApprovalRecord.application_id == id)
         .order_by(col(ApprovalRecord.created_at).asc())
     ).all()
-    return ApprovalRecordsPublic(data=records, count=len(records))
+    return ApprovalRecordsPublic(
+        data=[ApprovalRecordPublic.model_validate(r) for r in records],
+        count=len(records),
+    )
 
 
 @router.post("/{id}/schedule", response_model=RepaymentPlansPublic)
@@ -437,4 +446,7 @@ def read_application_risk(
         .where(RiskAssessment.application_id == id)
         .order_by(col(RiskAssessment.created_at).desc())
     ).all()
-    return RiskAssessmentsPublic(data=assessments, count=len(assessments))
+    return RiskAssessmentsPublic(
+        data=[RiskAssessmentPublic.model_validate(a) for a in assessments],
+        count=len(assessments),
+    )

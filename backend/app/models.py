@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import EmailStr
 from sqlalchemy import JSON, Column, Numeric, Text
@@ -172,7 +173,7 @@ class CustomersPublic(SQLModel):
 
 
 class Customer(CustomerBase, table=True):
-    __tablename__: str = "customers"
+    __tablename__ = "customers"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_by: uuid.UUID | None = Field(
@@ -180,7 +181,7 @@ class Customer(CustomerBase, table=True):
     )
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
 
-    applications: list["LoanApplication"] = Relationship(
+    applications: list[LoanApplication] = Relationship(
         back_populates="customer", cascade_delete=True
     )
 
@@ -189,7 +190,9 @@ class Customer(CustomerBase, table=True):
 # draft -> submitted -> auto_review -> pending_manual
 #   -> approved / rejected -> disbursed -> settled（驳回后可重新提交）
 class LoanApplicationBase(SQLModel):
-    customer_id: uuid.UUID = Field(foreign_key="customers.id", nullable=False, index=True)
+    customer_id: uuid.UUID = Field(
+        foreign_key="customers.id", nullable=False, index=True
+    )
     amount: Decimal = Field(sa_type=Numeric(12, 2))
     term_months: int
     purpose: str = Field(max_length=255)
@@ -218,7 +221,7 @@ class LoanApplicationsPublic(SQLModel):
 
 
 class LoanApplication(LoanApplicationBase, table=True):
-    __tablename__: str = "loan_applications"
+    __tablename__ = "loan_applications"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     submitted_by: uuid.UUID | None = Field(
@@ -232,13 +235,13 @@ class LoanApplication(LoanApplicationBase, table=True):
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
 
     customer: Customer | None = Relationship(back_populates="applications")
-    approval_records: list["ApprovalRecord"] = Relationship(
+    approval_records: list[ApprovalRecord] = Relationship(
         back_populates="application", cascade_delete=True
     )
-    repayment_plans: list["RepaymentPlan"] = Relationship(
+    repayment_plans: list[RepaymentPlan] = Relationship(
         back_populates="application", cascade_delete=True
     )
-    risk_assessments: list["RiskAssessment"] = Relationship(
+    risk_assessments: list[RiskAssessment] = Relationship(
         back_populates="application", cascade_delete=True
     )
 
@@ -269,7 +272,7 @@ class ApprovalRecordsPublic(SQLModel):
 
 
 class ApprovalRecord(ApprovalRecordBase, table=True):
-    __tablename__: str = "approval_records"
+    __tablename__ = "approval_records"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     operator_id: uuid.UUID | None = Field(
@@ -277,7 +280,9 @@ class ApprovalRecord(ApprovalRecordBase, table=True):
     )
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
 
-    application: LoanApplication | None = Relationship(back_populates="approval_records")
+    application: LoanApplication | None = Relationship(
+        back_populates="approval_records"
+    )
 
 
 # 还款计划（放款时按等额本息生成）
@@ -307,7 +312,7 @@ class RepaymentPlansPublic(SQLModel):
 
 
 class RepaymentPlan(RepaymentPlanBase, table=True):
-    __tablename__: str = "repayment_plans"
+    __tablename__ = "repayment_plans"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
@@ -328,12 +333,12 @@ class RiskAssessmentCreate(SQLModel):
     engine_version: str = Field(max_length=16)
     score: int | None = None
     level: str = Field(max_length=16)
-    reasons: dict | None = None
+    reasons: dict[str, Any] | None = None
 
 
 class RiskAssessmentPublic(RiskAssessmentBase):
     id: uuid.UUID
-    reasons: dict | None = Field(default=None, sa_column=Column(JSON))
+    reasons: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime | None = None
 
 
@@ -343,10 +348,12 @@ class RiskAssessmentsPublic(SQLModel):
 
 
 class RiskAssessment(RiskAssessmentBase, table=True):
-    __tablename__: str = "risk_assessments"
+    __tablename__ = "risk_assessments"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    reasons: dict | None = Field(default=None, sa_column=Column(JSON))
+    reasons: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
 
-    application: LoanApplication | None = Relationship(back_populates="risk_assessments")
+    application: LoanApplication | None = Relationship(
+        back_populates="risk_assessments"
+    )
