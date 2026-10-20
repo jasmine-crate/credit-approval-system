@@ -62,6 +62,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Variable not set}@db:5432/app
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
 
     healthcheck:
