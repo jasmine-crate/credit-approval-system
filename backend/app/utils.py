@@ -6,7 +6,7 @@ from typing import Any
 
 import emails
 import jwt
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from jwt.exceptions import InvalidTokenError
 
 from app.core import security
@@ -14,6 +14,13 @@ from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Templates live in a code-controlled directory and are loaded by name via the
+# loader (never from raw strings), with autoescaping on for HTML content.
+_email_env = Environment(
+    loader=FileSystemLoader(Path(__file__).parent / "email-templates"),
+    autoescape=select_autoescape(default=True),
+)
 
 
 @dataclass
@@ -23,12 +30,8 @@ class EmailData:
 
 
 def render_email_template(*, template_name: str, context: dict[str, Any]) -> str:
-    template_str = (
-        Path(__file__).parent / "email-templates" / template_name
-    ).read_text()
-    template: Template = Template(template_str)
-    html_content = template.render(context)
-    return html_content
+    template = _email_env.get_template(template_name)
+    return template.render(context)
 
 
 def send_email(

@@ -3,14 +3,16 @@ from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.models import User
+from tests.utils.utils import random_lower_string
 
 
 def test_create_user(client: TestClient, db: Session) -> None:
+    password = random_lower_string() + "A1!"
     r = client.post(
         f"{settings.API_V1_STR}/private/users/",
         json={
             "email": "pollo@listo.com",
-            "password": "password123",
+            "password": password,
             "full_name": "Pollo Listo",
         },
     )

@@ -3,8 +3,10 @@
 import re
 import sys
 from datetime import date
+from pathlib import Path
 
-RELEASE_NOTES_FILE = "release-notes.md"
+# Resolve relative to this script so writes always stay inside the repo.
+RELEASE_NOTES_FILE = Path(__file__).resolve().parent.parent / "release-notes.md"
 RELEASE_HEADER_PATTERN = re.compile(r"^## (\d+\.\d+\.\d+)\s*(\(.*\))?\s*$")
 
 
@@ -28,8 +30,7 @@ def main() -> None:
         lines[i] = f"## {version} ({today})\n"
         print(f"Added date: {version} ({today})")
 
-        with open(RELEASE_NOTES_FILE, "w") as f:
-            f.writelines(lines)
+        RELEASE_NOTES_FILE.write_text("".join(lines), encoding="utf-8")
         sys.exit(0)
 
     print("No release header found")

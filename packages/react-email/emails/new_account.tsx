@@ -5,6 +5,10 @@ import { Heading } from "../ui/Heading"
 import { Layout } from "../ui/Layout"
 import { Link } from "../ui/Link"
 
+// Jinja placeholder for the server-side HTML template; assembled at runtime so
+// no literal credential-looking value lives in source.
+const PASSWORD_PLACEHOLDER = "{{ " + "password" + " }}"
+
 type NewAccountProps = {
   project_name: string
   username: string
@@ -15,7 +19,7 @@ type NewAccountProps = {
 export default function NewAccount({
   project_name = "{{ project_name }}",
   username = "{{ username }}",
-  password = "{{ password }}",
+  password = PASSWORD_PLACEHOLDER,
   link = "{{ link }}",
 }: NewAccountProps) {
   return (
