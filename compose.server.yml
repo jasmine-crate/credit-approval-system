@@ -1,0 +1,19 @@
+# Bare-IP deployment overlay (no domain/TLS): plain HTTP on :80,
+# always-restart, and migrations+superuser run before serving.
+# Usage: docker compose -f compose.yml -f compose.server.yml up -d --build
+services:
+
+  proxy:
+    restart: always
+    ports:
+      - "80:80"
+
+  db:
+    restart: always
+
+  backend:
+    restart: always
+    command:
+      - bash
+      - -c
+      - bash scripts/prestart.sh && fastapi run --workers 2 --host 0.0.0.0 --port 8000
