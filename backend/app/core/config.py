@@ -26,6 +26,25 @@ class Settings(BaseSettings):
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
 
+    # 审批业务参数
+    LOAN_AMOUNT_MIN: float = 1000.0
+    LOAN_AMOUNT_MAX: float = 5_000_000.0
+    LOAN_TERM_MONTHS_MIN: int = 3
+    LOAN_TERM_MONTHS_MAX: int = 60
+    LOAN_ANNUAL_RATE: float = 0.035  # 等额本息年利率
+
+    # 规则引擎 v1（可解释，全部阈值显式配置）
+    RULE_PAYMENT_RATIO_REJECT: float = 0.5  # 月供/月收入 超过即拒（收入须为月供2倍）
+    RULE_ESCALATE_AMOUNT: float = 500_000.0  # 大额转人工阈值
+    RULE_SCORE_MEDIUM: int = 30  # 评分 >= 此值 → medium
+    RULE_SCORE_HIGH: int = 60  # 评分 >= 此值 → high
+    RULE_MAX_PRIOR_APPLICATIONS: int = 3  # 历史申请次数达到即高风险
+
+    # LLM 审批意见摘要（DeepSeek，可选：无 Key 时自动跳过，只降级不报错）
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+
     PROJECT_NAME: str
     SENTRY_DSN: HttpUrl | None = None
     DATABASE_URL: PostgresDsn

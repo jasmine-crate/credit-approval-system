@@ -55,3 +55,22 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+class RoleChecker:
+    """接口级角色校验：require = Depends(RoleChecker("approver", "admin"))"""
+
+    def __init__(self, *allowed_roles: str) -> None:
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, current_user: CurrentUser) -> User:
+        if current_user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires one of roles: {', '.join(self.allowed_roles)}",
+            )
+        return current_user
+
+
+ManagerOrAdmin = Annotated[User, Depends(RoleChecker("manager", "admin"))]
+ApproverOrAdmin = Annotated[User, Depends(RoleChecker("approver", "admin"))]
