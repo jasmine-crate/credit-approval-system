@@ -24,18 +24,18 @@
 ```mermaid
 flowchart LR
     subgraph CLIENT["客户端"]
-        W["Streamlit 运营工作台<br/>JWT 登录"]
+        W["Streamlit 运营工作台"]
         B["React 前端（模板自带）"]
     end
     subgraph BACKEND["后端 FastAPI"]
-        A["客户、申请、审批 API"] --> E{"规则引擎 v1<br/>硬规则+加权评分"}
-        E -->|"通过或转人工"| F["审批状态机<br/>乐观锁迁移"]
-        E -->|"硬规则拒绝"| R["自动拒绝"]
+        A["客户、申请、审批 API"] --> E{"规则引擎 v1 硬规则+加权评分"}
+        E -- 通过或转人工 --> F["审批状态机 乐观锁迁移"]
+        E -- 硬规则拒绝 --> R["自动拒绝"]
         F --> L["DeepSeek 摘要（建议权）"]
         F --> D[("PostgreSQL 6 表+审计")]
     end
-    W -->|"REST + JWT"| A
-    B -->|"REST + JWT"| A
+    W -- REST+JWT --> A
+    B -- REST+JWT --> A
     T["Traefik 反代 80"] --> A
 ```
 
@@ -43,24 +43,24 @@ flowchart LR
 
 ```mermaid
 erDiagram
-    user ||--o{ customers : "created_by (SET NULL)"
-    user ||--o{ loan_applications : "submitted_by or decided_by (SET NULL)"
-    customers ||--o{ loan_applications : "customer_id (CASCADE)"
-    loan_applications ||--o{ approval_records : "application_id (CASCADE)"
-    loan_applications ||--o{ repayment_plans : "application_id (CASCADE)"
-    loan_applications ||--o{ risk_assessments : "application_id (CASCADE)"
+    user ||--o{ customers : created_by_set_null
+    user ||--o{ loan_applications : submitted_by_or_decided_by
+    customers ||--o{ loan_applications : customer_id_cascade
+    loan_applications ||--o{ approval_records : application_id_cascade
+    loan_applications ||--o{ repayment_plans : application_id_cascade
+    loan_applications ||--o{ risk_assessments : application_id_cascade
 
     user {
         uuid id PK
         varchar email UK
         varchar hashed_password
-        varchar role "manager approver admin"
+        varchar role
     }
     customers {
         uuid id PK
         varchar name
-        varchar id_card_masked "脱敏存储"
-        numeric monthly_income "缺失则转人工"
+        varchar id_card_masked
+        numeric monthly_income
         uuid created_by FK
     }
     loan_applications {
@@ -68,16 +68,16 @@ erDiagram
         uuid customer_id FK
         numeric amount
         int term_months
-        varchar status "8状态机"
+        varchar status
         uuid submitted_by FK
         uuid decided_by FK
     }
     approval_records {
         uuid id PK
         uuid application_id FK
-        varchar action "submit auto_reject escalate approve reject disburse settle"
-        uuid operator_id FK "系统动作为空"
-        text comment
+        varchar action
+        uuid operator_id FK
+        text remark
     }
     repayment_plans {
         uuid id PK
@@ -90,10 +90,10 @@ erDiagram
     risk_assessments {
         uuid id PK
         uuid application_id FK
-        varchar engine_version "v1 评分卡未来插v2"
+        varchar engine_version
         int score
         varchar level
-        json reasons "可解释明细+llm_advice"
+        json reasons
     }
 ```
 
