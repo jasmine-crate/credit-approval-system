@@ -23,20 +23,20 @@
 
 ```mermaid
 flowchart LR
-    subgraph 客户端
-        W[Streamlit 运营工作台<br>JWT 登录]
-        B[React 前端<br>模板自带]
+    subgraph CLIENT["客户端"]
+        W["Streamlit 运营工作台<br/>JWT 登录"]
+        B["React 前端（模板自带）"]
     end
-    subgraph 后端 FastAPI
-        A[客户/申请/审批 API] --> E{规则引擎 v1<br>硬规则 + 加权评分}
-        E -->|通过/转人工| F[审批状态机<br>乐观锁迁移]
-        E -->|硬规则拒绝| R[自动拒绝]
-        F --> L[DeepSeek 摘要<br>建议权]
-        F --> D[(PostgreSQL<br>6 表 + 审计)]
+    subgraph BACKEND["后端 FastAPI"]
+        A["客户、申请、审批 API"] --> E{"规则引擎 v1<br/>硬规则+加权评分"}
+        E -->|"通过或转人工"| F["审批状态机<br/>乐观锁迁移"]
+        E -->|"硬规则拒绝"| R["自动拒绝"]
+        F --> L["DeepSeek 摘要（建议权）"]
+        F --> D[("PostgreSQL 6 表+审计")]
     end
-    W -->|REST + JWT| A
-    B -->|REST + JWT| A
-    T[Traefik 反代 :80] --> A
+    W -->|"REST + JWT"| A
+    B -->|"REST + JWT"| A
+    T["Traefik 反代 80"] --> A
 ```
 
 ## 数据模型（ER 图）
@@ -44,7 +44,7 @@ flowchart LR
 ```mermaid
 erDiagram
     user ||--o{ customers : "created_by (SET NULL)"
-    user ||--o{ loan_applications : "submitted_by / decided_by (SET NULL)"
+    user ||--o{ loan_applications : "submitted_by or decided_by (SET NULL)"
     customers ||--o{ loan_applications : "customer_id (CASCADE)"
     loan_applications ||--o{ approval_records : "application_id (CASCADE)"
     loan_applications ||--o{ repayment_plans : "application_id (CASCADE)"
@@ -52,15 +52,15 @@ erDiagram
 
     user {
         uuid id PK
-        email email_uk
-        string hashed_password
-        string role "manager/approver/admin"
+        varchar email UK
+        varchar hashed_password
+        varchar role "manager approver admin"
     }
     customers {
         uuid id PK
-        string name
-        string id_card_masked "脱敏存储"
-        numeric monthly_income "可缺失→转人工"
+        varchar name
+        varchar id_card_masked "脱敏存储"
+        numeric monthly_income "缺失则转人工"
         uuid created_by FK
     }
     loan_applications {
@@ -68,15 +68,15 @@ erDiagram
         uuid customer_id FK
         numeric amount
         int term_months
-        string status "8 状态机"
+        varchar status "8状态机"
         uuid submitted_by FK
         uuid decided_by FK
     }
     approval_records {
         uuid id PK
         uuid application_id FK
-        string action "submit/auto_reject/escalate/approve/reject/disburse/settle"
-        uuid operator_id FK "系统动作为 NULL"
+        varchar action "submit auto_reject escalate approve reject disburse settle"
+        uuid operator_id FK "系统动作为空"
         text comment
     }
     repayment_plans {
@@ -85,15 +85,15 @@ erDiagram
         int period_no
         date due_date
         numeric amount
-        string status
+        varchar status
     }
     risk_assessments {
         uuid id PK
         uuid application_id FK
-        string engine_version "v1，评分卡未来插 v2"
+        varchar engine_version "v1 评分卡未来插v2"
         int score
-        string level
-        json reasons "可解释明细 + llm_advice"
+        varchar level
+        json reasons "可解释明细+llm_advice"
     }
 ```
 
@@ -105,7 +105,7 @@ stateDiagram-v2
     draft --> submitted: 提交（归属人）
     submitted --> auto_review: 自动预审
     auto_review --> rejected: 硬规则拒绝（月供收入比超标）
-    auto_review --> pending_manual: 通过 / 转人工（收入缺失、大额）
+    auto_review --> pending_manual: 通过或转人工（收入缺失、大额）
     pending_manual --> approved: 审批人批准
     pending_manual --> rejected: 审批人驳回
     approved --> disbursed: 放款（生成等额本息计划）
